@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NLP Summarizer — Text Intelligence</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+    <!-- Toast notification -->
+    <div id="toast" class="toast" aria-live="polite">
+        <span class="toast-icon"><i class="fas fa-check-circle"></i></span>
+        <span class="toast-msg" id="toast-msg">Done</span>
+    </div>
+
+    <div class="app-shell">
+
+        <!-- ═══ SIDEBAR ═══ -->
+        <aside class="sidebar">
+            <div class="sidebar-brand">
+                <div class="brand-icon"><i class="fas fa-brain"></i></div>
+                <div>
+                    <span class="brand-name">NLP<em>SUM</em></span>
+                    <span class="brand-sub">Text Intelligence v2</span>
+                </div>
+            </div>
+
+            <nav class="sidebar-nav">
+                <span class="nav-label">Input Method</span>
+                <button class="nav-btn active" data-tab="text-input">
+                    <i class="fas fa-terminal"></i> Paste Text
+                </button>
+                <button class="nav-btn" data-tab="file-upload">
+                    <i class="fas fa-file-arrow-up"></i> Upload File
+                </button>
+            </nav>
+
+            <div class="sidebar-settings">
+                <span class="nav-label">Configuration</span>
+
+                <div class="config-row">
+                    <label>Summary Method</label>
+                    <div class="toggle-group" id="method-toggle">
+                        <button class="toggle-btn active" data-value="extractive">Extractive</button>
+                        <button class="toggle-btn" data-value="abstractive">Abstractive</button>
+                    </div>
+                    <input type="hidden" id="summary-type" value="extractive">
+                </div>
+
+                <div class="config-row" id="bullet-option">
+                    <label>Output Format</label>
+                    <div class="format-toggle">
+                        <button class="format-btn active" data-value="paragraph" id="fmt-para">
+                            <i class="fas fa-align-left"></i> Paragraph
+                        </button>
+                        <button class="format-btn" data-value="bullets" id="fmt-bullets">
+                            <i class="fas fa-list-ul"></i> Bullets
+                        </button>
+                    </div>
+                    <input type="hidden" id="output-format" value="paragraph">
+                </div>
+
+                <div class="config-row">
+                    <label>Output Length</label>
+                    <div class="toggle-group" id="length-toggle">
+                        <button class="toggle-btn" data-value="short">Short</button>
+                        <button class="toggle-btn active" data-value="medium">Medium</button>
+                        <button class="toggle-btn" data-value="detailed">Detailed</button>
+                    </div>
+                    <input type="hidden" id="summary-length" value="medium">
+                </div>
+
+                <div class="config-row">
+                    <label>Domain Context</label>
+                    <div class="domain-selector">
+                        <button class="domain-btn active" data-value="general"><i class="fas fa-globe"></i><span>General</span></button>
+                        <button class="domain-btn" data-value="news"><i class="fas fa-newspaper"></i><span>News</span></button>
+                        <button class="domain-btn" data-value="document"><i class="fas fa-file-lines"></i><span>Document</span></button>
+                        <button class="domain-btn" data-value="meeting"><i class="fas fa-users"></i><span>Meeting</span></button>
+                    </div>
+                    <input type="hidden" id="domain" value="general">
+                </div>
+            </div>
+
+            <div class="sidebar-footer">
+                <div class="method-info" id="method-info">
+                    <i class="fas fa-circle-info"></i>
+                    <p><strong>Extractive</strong>: Selects key sentences from the original text using TF-based frequency scoring.</p>
+                </div>
+            </div>
+        </aside>
+
+        <!-- ═══ MAIN ═══ -->
+        <main class="main-panel">
+
+            <!-- Input section -->
+            <section class="input-section">
+                <div class="section-header">
+                    <div>
+                        <h1 class="section-title">Text Summarization</h1>
+                        <p class="section-sub">Preprocessing · Extractive &amp; Abstractive · ROUGE Evaluation</p>
+                    </div>
+                    <!-- Live status badge -->
+                    <div class="status-badge" id="status-badge">
+                        <span class="status-dot"></span>
+                        <span id="status-text">Ready</span>
+                    </div>
+                </div>
+
+                <!-- Paste Text tab -->
+                <div class="tab-content active" id="text-input">
+                    <div class="textarea-wrapper" id="textarea-wrapper">
+                        <textarea id="input-text" placeholder="Paste your text here (minimum 50 words)…&#10;&#10;Supports: News articles · Research docs · Meeting transcripts"></textarea>
+                        <div class="textarea-footer">
+                            <div class="word-counter">
+                                <span id="word-count">0</span>
+                                <span class="wc-label">words</span>
+                                <!-- Progress bar inside textarea footer -->
+                                <div class="wc-bar-bg">
+                                    <div class="wc-bar-fill" id="wc-bar"></div>
+                                </div>
+                            </div>
+                            <span id="word-hint" class="word-hint">Need at least 50 words</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Upload File tab -->
+                <div class="tab-content" id="file-upload">
+                    <div class="drop-zone" id="drop-area">
+                        <div class="drop-icon"><i class="fas fa-cloud-arrow-up"></i></div>
+                        <p class="drop-title">Drop your file here</p>
+                        <p class="drop-sub">or</p>
+                        <label for="file-input" class="file-browse-btn">Browse Files</label>
+                        <input type="file" id="file-input" accept=".txt,.pdf,.docx" hidden>
+                        <p class="drop-formats">PDF · DOCX · TXT</p>
+                        <div class="file-status" id="file-status" style="display:none;">
+                            <i class="fas fa-file-check"></i>
+                            <span id="file-info"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <button id="summarize-btn" class="run-btn" disabled>
+                    <i class="fas fa-microchip"></i>
+                    <span id="run-btn-text">Execute Summarization</span>
+                    <i class="fas fa-arrow-right run-arrow"></i>
+                </button>
+            </section>
+
+            <!-- Processing steps — shown during loading -->
+            <div class="process-steps" id="process-steps" style="display:none;">
+                <div class="ps-step" id="ps1" data-label="Tokenizing text">
+                    <div class="ps-icon"><i class="fas fa-scissors"></i></div>
+                    <span>Tokenizing</span>
+                </div>
+                <div class="ps-connector"></div>
+                <div class="ps-step" id="ps2" data-label="Scoring sentences">
+                    <div class="ps-icon"><i class="fas fa-chart-simple"></i></div>
+                    <span>Scoring</span>
+                </div>
+                <div class="ps-connector"></div>
+                <div class="ps-step" id="ps3" data-label="Generating summary">
+                    <div class="ps-icon"><i class="fas fa-wand-magic-sparkles"></i></div>
+                    <span>Summarizing</span>
+                </div>
+                <div class="ps-connector"></div>
+                <div class="ps-step" id="ps4" data-label="Evaluating ROUGE">
+                    <div class="ps-icon"><i class="fas fa-chart-bar"></i></div>
+                    <span>Evaluating</span>
+                </div>
+            </div>
+
+            <!-- Results -->
+            <section class="results-section" id="results-section" style="display:none;">
+
+                <!-- Stats row -->
+                <div class="stats-bar">
+                    <div class="stat-chip">
+                        <span class="stat-val" id="stat-orig">—</span>
+                        <span class="stat-key">Original Words</span>
+                    </div>
+                    <div class="stat-chip">
+                        <span class="stat-val" id="stat-summ">—</span>
+                        <span class="stat-key">Summary Words</span>
+                    </div>
+                    <div class="stat-chip highlight-chip">
+                        <span class="stat-val" id="stat-compress">—</span>
+                        <span class="stat-key">Compression</span>
+                    </div>
+                    <div class="stat-chip">
+                        <span class="stat-val" id="stat-method">—</span>
+                        <span class="stat-key">Method</span>
+                    </div>
+                </div>
+
+                <div class="results-grid">
+
+                    <!-- Summary card -->
+                    <div class="result-block summary-block">
+                        <div class="block-header">
+                            <div class="block-title">
+                                <i class="fas fa-align-left"></i>
+                                <h2>Summary</h2>
+                            </div>
+                            <div class="block-actions">
+                                <button class="act-btn" id="copy-btn" title="Copy to clipboard">
+                                    <i class="fas fa-copy"></i>
+                                </button>
+                                <button class="act-btn" id="download-txt-btn" title="Download TXT">
+                                    <i class="fas fa-file-lines"></i>
+                                </button>
+                                <button class="act-btn" id="download-pdf-btn" title="Download PDF">
+                                    <i class="fas fa-file-pdf"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Reading time badge -->
+                        <div class="reading-meta" id="reading-meta">
+                            <span class="read-time" id="read-time"><i class="fas fa-clock"></i> — min read</span>
+                            <span class="sent-count" id="sent-count"><i class="fas fa-list"></i> — sentences</span>
+                        </div>
+
+                        <div class="summary-text" id="summary-output"></div>
+
+                        <div class="keywords-row">
+                            <span class="kw-label">Key Topics</span>
+                            <div class="tags" id="keywords-list"></div>
+                        </div>
+                    </div>
+
+                    <!-- Meta card -->
+                    <div class="result-block meta-block">
+
+                        <!-- Pipeline -->
+                        <div class="block-header">
+                            <div class="block-title">
+                                <i class="fas fa-sitemap"></i>
+                                <h2>Preprocessing Pipeline</h2>
+                            </div>
+                            <button class="toggle-panel-btn" id="toggle-pipeline" title="Toggle pipeline">
+                                <i class="fas fa-chevron-up"></i>
+                            </button>
+                        </div>
+                        <div class="pipeline-steps" id="pipeline-steps"></div>
+
+                        <!-- ROUGE -->
+                        <div class="block-header" style="margin-top:1.5rem;">
+                            <div class="block-title">
+                                <i class="fas fa-chart-bar"></i>
+                                <h2>Evaluation Metrics</h2>
+                            </div>
+                            <span class="metric-note">ROUGE F1</span>
+                        </div>
+                        <div class="rouge-panel" id="rouge-panel"></div>
+                        <p class="rouge-desc">ROUGE measures content overlap between the generated summary and the source — covering content coverage, fluency, and structural accuracy.</p>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Full-screen loading overlay -->
+    <div id="loading-overlay" class="loading-overlay">
+        <div class="loading-card">
+            <div class="spinner"></div>
+            <p class="loading-title">Analyzing Text</p>
+            <div class="loading-steps">
+                <div class="ls" id="ls1"><i class="fas fa-circle-notch fa-spin"></i> Tokenizing sentences</div>
+                <div class="ls dim" id="ls2"><i class="fas fa-circle"></i> Scoring words</div>
+                <div class="ls dim" id="ls3"><i class="fas fa-circle"></i> Generating summary</div>
+                <div class="ls dim" id="ls4"><i class="fas fa-circle"></i> Evaluating ROUGE</div>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>

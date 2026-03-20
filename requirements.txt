@@ -1,0 +1,11 @@
+Flask
+nltk
+transformers
+torch
+PyPDF2
+python-docx
+rouge-score
+beautifulsoup4
+requests
+sentencepiece
+fpdf
